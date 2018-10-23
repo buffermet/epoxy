@@ -22,3 +22,5 @@ Now you can use epoxy to fetch every resource in the web page and embed them int
 ```
 epoxy -source google-test.html -origin https://www.google.com/ -no-html
 ```
+
+![screenshot from 2018-10-23 14-33-46](https://user-images.githubusercontent.com/29265684/47335968-14c89a00-d6d1-11e8-9765-91832b644c3e.png)
