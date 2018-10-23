@@ -27,10 +27,7 @@ type SessionConfig struct {
 	Body []byte
 	Accept []string
 	Resources []Resource
-
 	RequestQueue sync.WaitGroup
-	SessionQueue sync.WaitGroup
-
 	Recursive bool
 }
 
@@ -128,7 +125,7 @@ func skipMimetype(mimetype string, session *SessionConfig) {
 func NewSession() SessionConfig {
 	accept := []string{"unknown", "application/octet-stream", "image/svg", "image/svg+xml", "image/jpeg", "image/png", "image/gif", "image/webp", "image/x-canon-cr2", "image/tiff", "image/bmp", "image/vnd.ms-photo", "image/vnd.adobe.photoshop", "image/vnd.microsoft.icon", "image/x-icon", "video/mp4", "video/x-m4v", "video/x-matroska", "video/webm", "video/quicktime", "video/x-msvideo", "video/x-ms-wmv", "video/mpeg", "video/x-flv", "audio/midi", "audio/mpeg", "audio/m4a", "audio/ogg", "audio/x-flac", "audio/x-wav", "audio/amr", "application/epub+zip", "application/zip", "application/x-tar", "application/x-rar-compressed", "application/gzip", "application/x-bzip2", "application/x-7z-compressed", "application/x-xz", "application/pdf", "application/x-msdownload", "application/x-shockwave-flash", "application/rtf", "application/vnd.ms-fontobject", "font/eot", "application/postscript", "application/x-sqlite3", "application/x-nintendo-nes-rom", "application/x-google-chrome-extension", "application/vnd.ms-cab-compressed", "application/x-deb", "application/x-unix-archive", "application/x-compress", "application/x-lzip", "application/x-rpm", "application/x-executable", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.ms-powerpoint", "application/vnd.openxmlformats-officedocument.presentationml.presentation", "application/font-woff", "font/woff", "application/font-woff", "font/woff2", "application/font-sfnt", "font/ttf", "application/font-sfnt", "font/otf", "text/css", "text/css;charset=UTF-8", "text/html", "text/html;charset=UTF-8", "text/javascript", "application/javascript", "application/x-javascript", "text/json", "application/json"}
 
-	s := SessionConfig{ "", "", []byte(""), accept, []Resource{}, sync.WaitGroup{}, sync.WaitGroup{}, false }
+	s := SessionConfig{ "", "", []byte(""), accept, []Resource{}, sync.WaitGroup{}, false }
 
 	args := os.Args[1:]
 

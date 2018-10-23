@@ -256,7 +256,7 @@ func Parse(s *session.SessionConfig) session.SessionConfig {
 							log.Success( strconv.Itoa( len(body) ) + " B " + log.BOLD + "[" + content_type + "]" + log.RESET + " " + address )
 
 							if regexp.MustCompile(`(?:text/(?:css|html)|image/svg\+xml)`).FindString(content_type) != "" {
-								_s := session.SessionConfig{ resource.Address, resource.Address, body, s.Accept, []session.Resource{}, sync.WaitGroup{}, sync.WaitGroup{}, true }
+								_s := session.SessionConfig{ resource.Address, resource.Address, body, s.Accept, []session.Resource{}, sync.WaitGroup{}, true }
 
 								_s = Parse(&_s)
 
