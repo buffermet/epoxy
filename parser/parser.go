@@ -37,34 +37,39 @@ func pathToURL(path, origin string) string {
 	origin_host := r.FindString(origin)
 	origin_path := r.ReplaceAllString(origin, "")
 	origin_path = regexp.MustCompile(`[^/]*$`).ReplaceAllString(origin_path, "")
+	origin_scheme := regexp.MustCompile(`(?i)^[a-z]+:`).FindString(origin)
 
 	url := ""
 
-	if regexp.MustCompile(`^/`).FindString(path) == "" {
-		if regexp.MustCompile(`(?i)^http[s]?://[^/]+`).FindString(path) == "" {
-			if regexp.MustCompile(`^[.]`).FindString(path) == "" {
-				url = origin_host + origin_path + path
-			} else {
-				count := len( regexp.MustCompile(`[.][.]/`).FindAllString(path, -1) )
-
-				if count == 0 {
-					log.Error("invalid path detected: " + path)
-				} else if len( regexp.MustCompile(`[^/]+/`).FindAllString(origin_path, -1) ) < count {
-					log.Error("unable to move out of directory: " + path + " (origin path is not long enough)")
+	if regexp.MustCompile(`^//`).FindString(path) == "" {
+		if regexp.MustCompile(`^/`).FindString(path) == "" {
+			if regexp.MustCompile(`(?i)^http[s]?://[^/]+`).FindString(path) == "" {
+				if regexp.MustCompile(`^[.]`).FindString(path) == "" {
+					url = origin_host + origin_path + path
 				} else {
-					stripped_path := origin_path
-					for i := 0; i < count; i++ {
-						stripped_path = regexp.MustCompile(`[^/]+/$`).ReplaceAllString(stripped_path, "")
-					}
+					count := len( regexp.MustCompile(`[.][.]/`).FindAllString(path, -1) )
 
-					url = origin_host + stripped_path + regexp.MustCompile(`^(?:[.][.]/)*`).ReplaceAllString(path, "")
+					if count == 0 {
+						log.Error("invalid path detected: " + path)
+					} else if len( regexp.MustCompile(`[^/]+/`).FindAllString(origin_path, -1) ) < count {
+						log.Error("unable to move out of directory: " + path + " (origin path is not long enough)")
+					} else {
+						stripped_path := origin_path
+						for i := 0; i < count; i++ {
+							stripped_path = regexp.MustCompile(`[^/]+/$`).ReplaceAllString(stripped_path, "")
+						}
+
+						url = origin_host + stripped_path + regexp.MustCompile(`^(?:[.][.]/)*`).ReplaceAllString(path, "")
+					}
 				}
+			} else {
+				url = path
 			}
 		} else {
-			url = path
+			url = origin_host + path
 		}
 	} else {
-		url = origin_host + path
+		url = origin_scheme + path
 	}
 
 	return url
