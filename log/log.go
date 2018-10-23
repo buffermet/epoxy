@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	RESET     = "\x1b[0;37m"
+	RESET     = "\x1b[0m"
 	BOLD      = "\x1b[1;37m"
 	ON_RED    = "\x1b[0;41;37m"
 	ON_YELLOW = "\x1b[0;43;37m"
