@@ -17,7 +17,7 @@ First grab the source of a web page and save it locally.
 curl https://www.google.com/ > google-test.html
 ```
 
-Now you can use epoxy to fetch every resource of the web page and embed them into the source file.
+Now you can use epoxy to fetch every resource in the web page and embed them into the source file.
 
 ```
 epoxy -source google-test.html -origin https://www.google.com/ -no-html
