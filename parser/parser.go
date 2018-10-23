@@ -134,13 +134,15 @@ func embedResources(s *session.SessionConfig) session.SessionConfig {
 				}
 			}
 
-			path = strings.Replace(path, "?", "\\?", -1)
-			path = strings.Replace(path, "-", "\\-", -1)
-			path = strings.Replace(path, ".", "\\.", -1)
-			path = strings.Replace(path, "+", "\\+", -1)
+			if len(body) > 0 {
+				path = strings.Replace(path, "?", "\\?", -1)
+				path = strings.Replace(path, "-", "\\-", -1)
+				path = strings.Replace(path, ".", "\\.", -1)
+				path = strings.Replace(path, "+", "\\+", -1)
 
-			new_source := regexp.MustCompile(`(?i)src=("|')` + path + `("|')`).ReplaceAllString( string(s.Body), "src=${1}" + string(body) + "${2}" )
-			s.Body = []byte(new_source)
+				new_source := regexp.MustCompile(`(?i)src=("|')` + path + `("|')`).ReplaceAllString( string(s.Body), "src=${1}" + string(body) + "${2}" )
+				s.Body = []byte(new_source)
+			}
 		}
 	}
 
@@ -160,13 +162,15 @@ func embedResources(s *session.SessionConfig) session.SessionConfig {
 				}
 			}
 
-			path = strings.Replace(path, "?", "\\?", -1)
-			path = strings.Replace(path, "-", "\\-", -1)
-			path = strings.Replace(path, ".", "\\.", -1)
-			path = strings.Replace(path, "+", "\\+", -1)
+			if len(body) > 0 {
+				path = strings.Replace(path, "?", "\\?", -1)
+				path = strings.Replace(path, "-", "\\-", -1)
+				path = strings.Replace(path, ".", "\\.", -1)
+				path = strings.Replace(path, "+", "\\+", -1)
 
-			new_source := regexp.MustCompile(`(?i)href=("|')` + path + `("|')`).ReplaceAllString( string(s.Body), "href=${1}" + string(body) + "${2}" )
-			s.Body = []byte(new_source)			
+				new_source := regexp.MustCompile(`(?i)href=("|')` + path + `("|')`).ReplaceAllString( string(s.Body), "href=${1}" + string(body) + "${2}" )
+				s.Body = []byte(new_source)			
+			}
 		}
 	}
 
@@ -186,13 +190,15 @@ func embedResources(s *session.SessionConfig) session.SessionConfig {
 				}
 			}
 
-			path = strings.Replace(path, "?", "\\?", -1)
-			path = strings.Replace(path, "-", "\\-", -1)
-			path = strings.Replace(path, ".", "\\.", -1)
-			path = strings.Replace(path, "+", "\\+", -1)
+			if len(body) > 0 {
+				path = strings.Replace(path, "?", "\\?", -1)
+				path = strings.Replace(path, "-", "\\-", -1)
+				path = strings.Replace(path, ".", "\\.", -1)
+				path = strings.Replace(path, "+", "\\+", -1)
 
-			new_source := regexp.MustCompile(`(?i)url[(]("|'|)` + path + `("|'|)[)]`).ReplaceAllString( string(s.Body), "url(${1}" + string(body) + "${2})" )
-			s.Body = []byte(new_source)
+				new_source := regexp.MustCompile(`(?i)url[(]("|'|)` + path + `("|'|)[)]`).ReplaceAllString( string(s.Body), "url(${1}" + string(body) + "${2})" )
+				s.Body = []byte(new_source)
+			}
 		}
 	}
 
@@ -217,7 +223,7 @@ func Parse(s *session.SessionConfig) session.SessionConfig {
 
 	if !s.Recursive || answer != "n" && answer != "N" {
 		for i := 0; i < len(resources); i++ {
-			if resources[i] != "" && !strings.HasPrefix(resources[i], "#") {
+			if resources[i] != "" && regexp.MustCompile(`(?i)^(?:data:|javascript:|#)`).FindString(resources[i]) == "" {
 				var resource session.Resource
 
 				address := pathToURL(resources[i], s.Origin)
