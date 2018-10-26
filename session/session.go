@@ -29,6 +29,7 @@ type SessionConfig struct {
 	Resources []Resource
 	RequestQueue sync.WaitGroup
 	Recursive bool
+	Cores int
 }
 
 func showOptions() {
@@ -38,8 +39,10 @@ func showOptions() {
 	       "\n" + 
 	       "  -source PATH    path to source file.\n" + 
 	       "  -origin URL     full URL to source file.\n" + 
-	       "  -recurse INT    recursion depth of resource fetching.\n" + 
+	       // "  -recurse INT    recursion depth of resource fetching.\n" + 
 	       "  -cores INT      limit of cores to use for async parsing.\n" + 
+	       "\n" + 
+	       "  -dataurl PATH   return base64 encoded data url of a file." + 
 	       "\n" + 
 	       "  -no-unknown     don't embed unknown filetypes.\n" + 
 	       "  -no-svg         don't embed svg files.\n" + 
