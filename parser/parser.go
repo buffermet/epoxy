@@ -14,7 +14,6 @@ import(
 	"regexp"
 	"strings"
 	"strconv"
-	"runtime"
 	"encoding/base64"
 
 	"github.com/h2non/filetype"
@@ -87,6 +86,15 @@ func findResources(s *session.SessionConfig) []string {
 		}
 	}
 
+	matches_content := regexp.MustCompile(`(?i)content=["'](.*?)["']`).FindAllString( string(s.Body), -1 )
+
+	for i := 0; i < len(matches_content); i++ {
+		matches_content[i] = regexp.MustCompile(`(?i)content=["'](.*?)["']`).ReplaceAllString(matches_content[i], "${1}")
+		if !strings.HasPrefix(matches_content[i], "data:") {
+			resources = append(resources, matches_content[i])
+		}
+	}
+
 	matches_href := regexp.MustCompile(`(?i)href=["'](.*?)["']`).FindAllString( string(s.Body), -1 )
 
 	for i := 0; i < len(matches_href); i++ {
@@ -105,6 +113,18 @@ func findResources(s *session.SessionConfig) []string {
 		}
 	}
 
+	no_dupe_resources := []string{}
+
+	m := make(map[string]bool)
+	for _, entry := range resources {
+		if _, value := m[entry]; !value {
+			m[entry] = true
+			no_dupe_resources = append(no_dupe_resources, entry)
+		}
+	}
+
+	resources = no_dupe_resources
+
 	if len(resources) > 1 {
 		log.Success("found " + strconv.Itoa( len(resources) ) + " embeddable resources in " + log.BOLD + s.Source + log.RESET + ".")
 	} else if len(resources) == 1 {
@@ -117,9 +137,9 @@ func findResources(s *session.SessionConfig) []string {
 }
 
 func createDataURL(mimetype string, payload *[]byte) []byte {
-	encoded := base64.StdEncoding.EncodeToString(*payload)
+	encoded_body := base64.StdEncoding.EncodeToString(*payload)
 
-	return []byte("data:" + mimetype + ";base64," + encoded)
+	return []byte("data:" + mimetype + ";base64," + encoded_body)
 }
 
 func embedResources(s *session.SessionConfig) session.SessionConfig {
@@ -146,6 +166,34 @@ func embedResources(s *session.SessionConfig) session.SessionConfig {
 				path = strings.Replace(path, "+", "\\+", -1)
 
 				new_source := regexp.MustCompile(`(?i)src=("|')` + path + `("|')`).ReplaceAllString( string(s.Body), "src=${1}" + string(body) + "${2}" )
+				s.Body = []byte(new_source)
+			}
+		}
+	}
+
+	matches_content := regexp.MustCompile(`(?i)content=["'][^"']+["']`).FindAllString( string(s.Body), -1 )
+
+	for i := 0; i < len(matches_content); i++ {
+		path := regexp.MustCompile(`(?i)content=["']([^"']+)["']`).ReplaceAllString( string(matches_content[i]), "${1}" )
+
+		if regexp.MustCompile(`(?i)^(?:data:|javascript:|#)`).FindString(path) == "" {
+			address := pathToURL(path, s.Origin)
+
+			var body []byte
+
+			for a := 0; a < len(s.Resources); a++ {
+				if address == s.Resources[a].Address {
+					body = s.Resources[a].Body
+				}
+			}
+
+			if len(body) > 0 {
+				path = strings.Replace(path, "?", "\\?", -1)
+				path = strings.Replace(path, "-", "\\-", -1)
+				path = strings.Replace(path, ".", "\\.", -1)
+				path = strings.Replace(path, "+", "\\+", -1)
+
+				new_source := regexp.MustCompile(`(?i)content=("|')` + path + `("|')`).ReplaceAllString( string(s.Body), "content=${1}" + string(body) + "${2}" )
 				s.Body = []byte(new_source)
 			}
 		}
@@ -219,99 +267,151 @@ func Parse(s *session.SessionConfig) session.SessionConfig {
 		origin_path = regexp.MustCompile(`[^/]*$`).ReplaceAllString(origin_path, "")
 	}
 
-	resources := findResources(s)
+	if s.Recurse != 0 {
+		resources := findResources(s)
 
-	answer := ""
-	if !s.Recursive {
-		answer = log.Prompt( "fetch " + strconv.Itoa( len(resources) ) + " resource(s)? Y/n" )
-	}
+		session.Depth++
 
-	if !s.Recursive || answer != "n" && answer != "N" {
-		for i := 0; i < len(resources); i++ {
-			if resources[i] != "" && regexp.MustCompile(`(?i)^(?:data:|javascript:|#)`).FindString(resources[i]) == "" {
-				var resource session.Resource
+		answer := ""
 
-				address := pathToURL(resources[i], s.Origin)
-				resource.Address = address
+		if session.Depth == 1 {
+			answer = log.Prompt( "fetch up to " + strconv.Itoa( len(resources) ) + " resource(s)? Y/n" )
+		}
 
-				s.RequestQueue.Add(1)
+		if session.Depth != 1 || answer != "n" && answer != "N" {
+			for i := 0; i < len(resources); i++ {
+				if resources[i] != "" && regexp.MustCompile(`(?i)^(?:data:|javascript:|#)`).FindString(resources[i]) == "" {
+					var resource session.Resource
 
-				runtime.GOMAXPROCS(8)
-				go func(path string) {
-					stripped_address := regexp.MustCompile(`(?:\?|#).*$`).ReplaceAllString(address, "")
+					address := pathToURL(resources[i], s.Origin)
+					resource.Address = address
 
-					extension := regexp.MustCompile(`\.([a-zA-Z0-9)]+)$`).FindString(stripped_address)
+					if session.Depth <= s.Recurse {
+						s.RequestQueue.Add(1)
 
-					extension_mimetype := strings.Replace( mime.TypeByExtension(extension) , " ", "", -1 )
-					if extension_mimetype == "" { extension_mimetype = "unknown" }
+						///// ASYNC /////
+						go func(path string) {
+							stripped_address := regexp.MustCompile(`(?:\?|#).*$`).ReplaceAllString(address, "")
 
-					if containsString(&s.Accept, extension_mimetype) {
-						body, content_type := net.SendRequest(address, s)
+							extension := regexp.MustCompile(`\.([a-zA-Z0-9)]+)$`).FindString(stripped_address)
 
-						content_type = strings.Replace(content_type, " ", "", -1)
+							extension_mimetype := strings.Replace( mime.TypeByExtension(extension) , " ", "", -1 )
+							if extension_mimetype == "" { extension_mimetype = "unknown" }
 
-						sniffed_mimetype, err := filetype.Match(body)
-						if err != nil {
-							log.Info( "could not determine filetype, using Content-Type header value: " + content_type + "(" + err.Error() + ")" )
-						}
+							if containsString(&s.Accept, extension_mimetype) {
+								body, content_type := net.SendRequest(address, s)
 
-						sniffed_mimetype.MIME.Value = strings.Replace(sniffed_mimetype.MIME.Value, " ", "", -1)
+								content_type = strings.Replace(content_type, " ", "", -1)
 
-						if sniffed_mimetype.MIME.Value != "" {
-							content_type = sniffed_mimetype.MIME.Value
-						}
+								parsed_mimetype, err := filetype.Match(body)
+								if err != nil {
+									log.Info( "could not determine filetype, using Content-Type header value: " + content_type + "(" + err.Error() + ")" )
+								}
 
-						resource.Type = content_type
+								parsed_mimetype.MIME.Value = strings.Replace(parsed_mimetype.MIME.Value, " ", "", -1)
 
-						if containsString(&s.Accept, content_type) {
-							log.Success( strconv.Itoa( len(body) ) + " B " + log.BOLD + "[" + content_type + "]" + log.RESET + " " + address )
+								if parsed_mimetype.MIME.Value != "" {
+									content_type = parsed_mimetype.MIME.Value
+								}
 
-							if regexp.MustCompile(`(?:text/(?:css|html)|image/svg\+xml)`).FindString(content_type) != "" {
-								_s := session.SessionConfig{ resource.Address, resource.Address, body, s.Accept, []session.Resource{}, sync.WaitGroup{}, true }
+								content_type = regexp.MustCompile(`;.*`).ReplaceAllString(content_type, "")
 
-								_s = Parse(&_s)
+								resource.Type = content_type
 
-								resource.Body = _s.Body
+								if containsString(&s.Accept, content_type) {
+									log.Success( strconv.Itoa( len(body) ) + " B " + log.BOLD + "[" + content_type + "]" + log.RESET + " " + address )
+
+									if regexp.MustCompile(`(?:text/(?:css|html)|image/svg\+xml)`).FindString(content_type) != "" {
+										_s := session.SessionConfig { 
+											resource.Address,             // Source string
+											resource.Address,             // Origin string
+											body,                         // Body []byte
+											s.Accept,                     // Accept []string
+											(s.Recurse - session.Depth),  // Recurse int
+											[]session.Resource{},         // Resources []Resource
+											sync.WaitGroup{},             // RequestQueue sync.WaitGroup
+										}
+
+										_s = Parse(&_s)
+
+										resource.Body = _s.Body
+									} else {
+										resource.Body = body
+									}
+
+									s.Resources = append(s.Resources, resource)
+								} else {
+									log.Info( "skipping response: " + strconv.Itoa( len(body) ) + " B " + log.BOLD + "[" + content_type + "]" + log.RESET + " " + address )
+								}
 							} else {
-								resource.Body = body
+								log.Info( "skipping request: " + log.BOLD + "[" + extension_mimetype + "]" + log.RESET + " " + address )
 							}
 
-							s.Resources = append(s.Resources, resource)
-						} else {
-							log.Info( "skipping response: " + strconv.Itoa( len(body) ) + " B " + log.BOLD + "[" + content_type + "]" + log.RESET + " " + address )
-						}
-					} else {
-						log.Info( "skipping request: " + log.BOLD + "[" + extension_mimetype + "]" + log.RESET + " " + address )
+							s.RequestQueue.Done()
+						}(resources[i])
+						///// SYNC /////
 					}
-
-					s.RequestQueue.Done()
-				}(resources[i])
-			}
-		}
-
-		s.RequestQueue.Wait()
-
-		if len(s.Resources) > 0 {
-			log.Info("generating base64 encoded data URLs ...")
-
-			for i := 0; i < len(s.Resources); i++ {
-				data_url := createDataURL(s.Resources[i].Type, &s.Resources[i].Body)
-
-				s.Resources[i].Body = data_url
+				}
 			}
 
-			if s.Recursive {
+			s.RequestQueue.Wait()
+
+			if len(s.Resources) > 0 {
+				log.Info("generating base64 encoded data URLs ...")
+
+				for i := 0; i < len(s.Resources); i++ {
+					data_url := createDataURL(s.Resources[i].Type, &s.Resources[i].Body)
+
+					s.Resources[i].Body = data_url
+				}
+
 				log.Info("embedding resources in " + log.BOLD + s.Source + log.RESET + " ...")
-			} else {
-				log.Info("embedding resources in source file ...")
+
+				*s = embedResources(s)
 			}
 
-			*s = embedResources(s)
+			return *s
+		} else {
+			log.Raw("")
+		}
+	} else { // if s.Recurse is 0
+		content_type := ""
+
+		extension_mimetype := ""
+
+		if s.Origin != "" {
+			stripped_address := regexp.MustCompile(`(?:\?|#).*$`).ReplaceAllString(s.Origin, "")
+
+			extension := regexp.MustCompile(`\.([a-zA-Z0-9)]+)$`).FindString(stripped_address)
+			extension_mimetype = strings.Replace( mime.TypeByExtension(extension) , " ", "", -1 )
+		} else {
+			extension := regexp.MustCompile(`\.([a-zA-Z0-9)]+)$`).FindString(s.Source)
+			extension_mimetype = strings.Replace( mime.TypeByExtension(extension) , " ", "", -1 )
 		}
 
-		return *s
-	} else {
-		log.Raw("")
+		parsed_mimetype, err := filetype.Match(s.Body)
+		if err != nil { log.Info( "could not determine filetype, using Content-Type header value: " + content_type + "(" + err.Error() + ")" ) }
+		parsed_mimetype.MIME.Value = strings.Replace(parsed_mimetype.MIME.Value, " ", "", -1)
+
+		if parsed_mimetype.MIME.Value != "" {
+			content_type = parsed_mimetype.MIME.Value
+		} else if extension_mimetype != "" {
+			content_type = extension_mimetype
+		}
+
+		content_type = regexp.MustCompile(`;.*`).ReplaceAllString(content_type, "")
+
+		if content_type != "" {
+			data_url := "data:" + content_type + ";base64,"
+
+			encoded_body := base64.StdEncoding.EncodeToString(s.Body)
+
+			s.Body = []byte(data_url + encoded_body)
+
+			return *s
+		} else {
+			log.Fatal( "could not determine filetype, please specify it manually using -mimetype STRING" )
+		}
 	}
 
 	return *s

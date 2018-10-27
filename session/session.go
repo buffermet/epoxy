@@ -9,8 +9,9 @@ package session
 import(
 	"os"
 	"sync"
-	"io/ioutil"
 	"regexp"
+	"strconv"
+	"io/ioutil"
 
 	"github.com/yungtravla/epoxy/log"
 )
@@ -26,23 +27,29 @@ type SessionConfig struct {
 	Origin string
 	Body []byte
 	Accept []string
+	Recurse int
 	Resources []Resource
 	RequestQueue sync.WaitGroup
-	Recursive bool
-	Cores int
 }
+
+var (
+	Cores = 4
+	Depth int
+	Print bool
+)
 
 func showOptions() {
 	str := "usage: epoxy <options> -source <path> -origin <url>\n" + 
 	       "\n" + 
 	       "Options:\n" + 
 	       "\n" + 
+	       "  -print          print payload to stdout.\n" + 
+	       "\n" + 
 	       "  -source PATH    path to source file.\n" + 
 	       "  -origin URL     full URL to source file.\n" + 
-	       // "  -recurse INT    recursion depth of resource fetching.\n" + 
-	       "  -cores INT      limit of cores to use for async parsing.\n" + 
 	       "\n" + 
-	       "  -dataurl PATH   return base64 encoded data url of a file." + 
+	       "  -recurse INT    limit of recursions for resource embedding (default=4).\n" + 
+	       "  -cores INT      limit of procs for async parsing (default=4).\n" + 
 	       "\n" + 
 	       "  -no-unknown     don't embed unknown filetypes.\n" + 
 	       "  -no-svg         don't embed svg files.\n" + 
@@ -126,15 +133,139 @@ func skipMimetype(mimetype string, session *SessionConfig) {
 }
 
 func NewSession() SessionConfig {
-	accept := []string{"unknown", "application/octet-stream", "image/svg", "image/svg+xml", "image/jpeg", "image/png", "image/gif", "image/webp", "image/x-canon-cr2", "image/tiff", "image/bmp", "image/vnd.ms-photo", "image/vnd.adobe.photoshop", "image/vnd.microsoft.icon", "image/x-icon", "video/mp4", "video/x-m4v", "video/x-matroska", "video/webm", "video/quicktime", "video/x-msvideo", "video/x-ms-wmv", "video/mpeg", "video/x-flv", "audio/midi", "audio/mpeg", "audio/m4a", "audio/ogg", "audio/x-flac", "audio/x-wav", "audio/amr", "application/epub+zip", "application/zip", "application/x-tar", "application/x-rar-compressed", "application/gzip", "application/x-bzip2", "application/x-7z-compressed", "application/x-xz", "application/pdf", "application/x-msdownload", "application/x-shockwave-flash", "application/rtf", "application/vnd.ms-fontobject", "font/eot", "application/postscript", "application/x-sqlite3", "application/x-nintendo-nes-rom", "application/x-google-chrome-extension", "application/vnd.ms-cab-compressed", "application/x-deb", "application/x-unix-archive", "application/x-compress", "application/x-lzip", "application/x-rpm", "application/x-executable", "application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.ms-powerpoint", "application/vnd.openxmlformats-officedocument.presentationml.presentation", "application/font-woff", "font/woff", "application/font-woff", "font/woff2", "application/font-sfnt", "font/ttf", "application/font-sfnt", "font/otf", "text/css", "text/css;charset=UTF-8", "text/html", "text/html;charset=UTF-8", "text/javascript", "application/javascript", "application/x-javascript", "text/json", "application/json"}
+	accept := []string { 
+		"unknown", 
+		"application/octet-stream", 
+		"image/svg", 
+		"image/svg+xml", 
+		"image/jpeg", 
+		"image/png", 
+		"image/gif", 
+		"image/webp", 
+		"image/x-canon-cr2", 
+		"image/tiff", 
+		"image/bmp", 
+		"image/vnd.ms-photo", 
+		"image/vnd.adobe.photoshop", 
+		"image/vnd.microsoft.icon", 
+		"image/x-icon", 
+		"video/mp4", 
+		"video/x-m4v", 
+		"video/x-matroska", 
+		"video/webm", 
+		"video/quicktime", 
+		"video/x-msvideo", 
+		"video/x-ms-wmv", 
+		"video/mpeg", 
+		"video/x-flv", 
+		"audio/midi", 
+		"audio/mpeg", 
+		"audio/m4a", 
+		"audio/ogg", 
+		"audio/x-flac", 
+		"audio/x-wav", 
+		"audio/amr", 
+		"application/epub+zip", 
+		"application/zip", 
+		"application/x-tar", 
+		"application/x-rar-compressed", 
+		"application/gzip", 
+		"application/x-bzip2", 
+		"application/x-7z-compressed", 
+		"application/x-xz", 
+		"application/pdf", 
+		"application/x-msdownload", 
+		"application/x-shockwave-flash", 
+		"application/rtf", 
+		"application/vnd.ms-fontobject", 
+		"font/eot", 
+		"application/postscript", 
+		"application/x-sqlite3", 
+		"application/x-nintendo-nes-rom", 
+		"application/x-google-chrome-extension", 
+		"application/vnd.ms-cab-compressed", 
+		"application/x-deb", 
+		"application/x-unix-archive", 
+		"application/x-compress", 
+		"application/x-lzip", 
+		"application/x-rpm", 
+		"application/x-executable", 
+		"application/msword", 
+		"application/vnd.openxmlformats-officedocument.wordprocessingml.document", 
+		"application/vnd.ms-excel", 
+		"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", 
+		"application/vnd.ms-powerpoint", 
+		"application/vnd.openxmlformats-officedocument.presentationml.presentation", 
+		"application/font-woff", 
+		"font/woff", 
+		"application/font-woff", 
+		"font/woff2", 
+		"application/font-sfnt", 
+		"font/ttf", 
+		"application/font-sfnt", 
+		"font/otf", 
+		"text/css", 
+		"text/css;charset=UTF-8", 
+		"text/html", 
+		"text/html;charset=UTF-8", 
+		"text/javascript", 
+		"application/javascript", 
+		"application/x-javascript", 
+		"text/json", 
+		"application/json", 
+	}
 
-	s := SessionConfig{ "", "", []byte(""), accept, []Resource{}, sync.WaitGroup{}, false }
+	s := SessionConfig { 
+		"",                // Source string
+		"",                // Origin string
+		[]byte(""),        // Body []byte
+		accept,            // Accept []string
+		4,                 // Recurse int
+		[]Resource{},      // Resources []Resource
+		sync.WaitGroup{},  // RequestQueue sync.WaitGroup
+	}
 
 	args := os.Args[1:]
+	recurse_arg := ""
+	cores_arg := ""
 
 	for i := 0; i < len(args); i++ {
 		if args[i] == "--help" || args[i] == "-help" {
 			showOptions()
+		} else if args[i] == "--print" || args[i] == "-print" {
+			Print = true
+		} else if args[i] == "--source" || args[i] == "-source" {
+			if i < ( len(args) - 1 ) {
+				s.Source = args[i+1]
+				i++
+			} else {
+				log.Error("missing value for: " + args[i] + "\n")
+				showOptions()
+			}
+		} else if args[i] == "--origin" || args[i] == "-origin" {
+			if i < ( len(args) - 1 ) {
+				s.Origin = args[i+1]
+				i++
+			} else {
+				log.Error("missing value for: " + args[i] + "\n")
+				showOptions()
+			}
+		} else if args[i] == "--recurse" || args[i] == "-recurse" {
+			if i < ( len(args) - 1 ) {
+				recurse_arg = args[i+1]
+				i++
+			} else {
+				log.Error("missing value for: " + args[i] + "\n")
+				showOptions()
+			}
+		} else if args[i] == "--cores" || args[i] == "-cores" {
+			if i < ( len(args) - 1 ) {
+				cores_arg = args[i+1]
+				i++
+			} else {
+				log.Error("missing value for: " + args[i] + "\n")
+				showOptions()
+			}
 		} else if args[i] == "--no-unknown" || args[i] == "-no-unknown" {
 			skipMimetype("unknown", &s)
 			skipMimetype("application/octet-stream", &s)
@@ -279,45 +410,33 @@ func NewSession() SessionConfig {
 			skipMimetype("application/x-javascript", &s)
 		} else if args[i] == "--no-json" || args[i] == "-no-json" {
 			skipMimetype("application/json", &s)
-		} else if args[i] == "--source" || args[i] == "-source" {
-			if i < ( len(args) - 1 ) {
-				s.Source = args[i+1]
-			} else {
-				log.Error("missing value for: " + args[i] + "\n")
-				showOptions()
-			}
-		} else if args[i] == "--origin" || args[i] == "-origin" {
-			if i < ( len(args) - 1 ) {
-				s.Origin = args[i+1]
-			} else {
-				log.Error("missing value for: " + args[i] + "\n")
-				showOptions()
-			}
-		} else if args[i-1] != "--origin" && args[i-1] != "-origin" && args[i-1] != "--source" && args[i-1] != "-source" {
+		} else {
 			log.Error("invalid parameter: " + args[i] + "\n")
 			showOptions()
 		}
 	}
 
-	if s.Origin == "" {
-		log.Error("missing parameter: -origin\n")
-		showOptions()
-	} else {
-		if regexp.MustCompile(`(?i)^http[s]?://[a-z0-9]`).FindString(s.Origin) == "" {
-			log.Error("invalid origin url: " + s.Origin + "\n")
+	if recurse_arg != "0" {
+		if s.Origin == "" {
+			log.Error("missing parameter: -origin\n")
 			showOptions()
-		}
-
-		r := regexp.MustCompile(`(?i)^http[s]?://[^/]+`)
-		host := r.FindString(s.Origin)
-		path := r.ReplaceAllString(s.Origin, "")
-
-		if path == "" {
-			s.Origin = s.Origin + "/"
 		} else {
-			stripped_path := regexp.MustCompile(`[/]?[^/]*$`).ReplaceAllString(path, "/")
+			if regexp.MustCompile(`(?i)^(?:http[s]?://|file://[/]?)[a-z0-9]`).FindString(s.Origin) == "" {
+				log.Error("invalid origin url: " + s.Origin + "\n")
+				showOptions()
+			}
 
-			s.Origin = host + stripped_path
+			r := regexp.MustCompile(`(?i)^http[s]?://[^/]+`)
+			host := r.FindString(s.Origin)
+			path := r.ReplaceAllString(s.Origin, "")
+
+			if path == "" {
+				s.Origin = s.Origin + "/"
+			} else {
+				stripped_path := regexp.MustCompile(`[/]?[^/]*$`).ReplaceAllString(path, "/")
+
+				s.Origin = host + stripped_path
+			}
 		}
 	}
 
@@ -332,6 +451,24 @@ func NewSession() SessionConfig {
 		}
 
 		s.Body = source
+	}
+
+	if recurse_arg != "" {
+		i, err := strconv.Atoi(recurse_arg)
+		if err != nil {
+			log.Error( "invalid number of recursions: " + recurse_arg + " (" + err.Error() + ")\n" )
+		}
+
+		s.Recurse = i
+	}
+
+	if cores_arg != "" {
+		i, err := strconv.Atoi(cores_arg)
+		if err != nil {
+			log.Error( "invalid number of processes: " + cores_arg + " (" + err.Error() + ")\n" )
+		}
+
+		Cores = i
 	}
 
 	return s
