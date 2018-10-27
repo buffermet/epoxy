@@ -113,17 +113,16 @@ func findResources(s *session.SessionConfig) []string {
 		}
 	}
 
-	no_dupe_resources := []string{}
-
+	unique_resources := []string{}
 	m := make(map[string]bool)
 	for _, entry := range resources {
 		if _, value := m[entry]; !value {
 			m[entry] = true
-			no_dupe_resources = append(no_dupe_resources, entry)
+			unique_resources = append(unique_resources, entry)
 		}
 	}
 
-	resources = no_dupe_resources
+	resources = unique_resources
 
 	if len(resources) > 1 {
 		log.Success("found " + strconv.Itoa( len(resources) ) + " embeddable resources in " + log.BOLD + s.Source + log.RESET + ".")

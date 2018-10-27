@@ -1,10 +1,11 @@
-Embeds resources with data URLs to create single file web pages.
+Asynchronous and recursive data URL generator/embedder for single files or resourceful web pages.
 
 # Install
 
 Make sure that your **go environment** is configured correctly and that `$GOPATH/bin` is added to `$PATH`.
 
 ```
+go get github.com/yungtravla/epoxy
 cd $GOPATH/src/github.com/yungtravla/epoxy
 go install
 ```
