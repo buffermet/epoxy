@@ -48,7 +48,7 @@ func showOptions() {
 	       "  -source PATH    path to source file.\n" + 
 	       "  -origin URL     full URL to source file.\n" + 
 	       "\n" + 
-	       "  -recurse INT    limit of recursions for resource embedding (default=4).\n" + 
+	       "  -recurse INT    limit of recursions for resource embedding (default=1).\n" + 
 	       "  -cores INT      limit of procs for async parsing (default=4).\n" + 
 	       "\n" + 
 	       "  -no-unknown     don't embed unknown filetypes.\n" + 
@@ -220,7 +220,7 @@ func NewSession() SessionConfig {
 		"",                // Origin string
 		[]byte(""),        // Body []byte
 		accept,            // Accept []string
-		4,                 // Recurse int
+		1,                 // Recurse int
 		[]Resource{},      // Resources []Resource
 		sync.WaitGroup{},  // RequestQueue sync.WaitGroup
 	}

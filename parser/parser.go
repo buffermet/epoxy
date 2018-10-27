@@ -304,9 +304,7 @@ func Parse(s *session.SessionConfig) session.SessionConfig {
 								content_type = strings.Replace(content_type, " ", "", -1)
 
 								parsed_mimetype, err := filetype.Match(body)
-								if err != nil {
-									log.Info( "could not determine filetype, using Content-Type header value: " + content_type + "(" + err.Error() + ")" )
-								}
+								if err != nil { log.Info( "could not determine filetype, using Content-Type header value: " + content_type + "(" + err.Error() + ")" ) }
 
 								parsed_mimetype.MIME.Value = strings.Replace(parsed_mimetype.MIME.Value, " ", "", -1)
 
@@ -378,7 +376,6 @@ func Parse(s *session.SessionConfig) session.SessionConfig {
 		content_type := ""
 
 		extension_mimetype := ""
-
 		if s.Origin != "" {
 			stripped_address := regexp.MustCompile(`(?:\?|#).*$`).ReplaceAllString(s.Origin, "")
 
