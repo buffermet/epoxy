@@ -1,4 +1,4 @@
-Asynchronous and recursive data URL generator/embedder for single files or resourceful web pages.
+Asynchronous and recursive data URL generator/embedder for single files or web pages.
 
 # Install
 
