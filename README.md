@@ -15,13 +15,13 @@ go install
 First grab the source of a web page and save it locally.
 
 ```
-curl https://www.google.com/ > google-test.html
+curl https://twitter.com/ > twitter-index.html
 ```
 
 Now you can use epoxy to fetch every resource in the web page and embed them into the source file.
 
 ```
-epoxy -source google-test.html -origin https://www.google.com/ -recurse 1 -no-html
+epoxy -source twitter-index.html -origin https://twitter.com/ -recurse 3 -no-html
 ```
 
 You can set the recursion limit with `-recurse` to choose how many nested resources should be embedded as data URLs for every resource.
@@ -31,7 +31,7 @@ You can set the recursion limit with `-recurse` to choose how many nested resour
 If you want to turn a single file into a data URL, set the recursion to 0 and epoxy will generate a data URL for the specified file.
 
 ```
-epoxy -source google-test.html -recurse 0
+epoxy -source twitter-index.html -recurse 0
 ```
 
 # Options
