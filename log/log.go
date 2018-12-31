@@ -24,23 +24,23 @@ var (
 )
 
 func Success(message string) {
-	fmt.Print(ON_GREEN + " " + RESET + " OK: ", message, "\n")
+	fmt.Print(ON_GREEN + " " + RESET + " ", message, "\n")
 }
 
 func Info(message string) {
-	fmt.Print(ON_GREY + " " + RESET + " INF: ", message, "\n")
+	fmt.Print(ON_GREY + " " + RESET + " ", message, "\n")
 }
 
 func Warn(message string) {
-	fmt.Print(ON_YELLOW + " " + RESET + " WAR: ", message, "\n")
+	fmt.Print(ON_YELLOW + " " + RESET + " ", message, "\n")
 }
 
 func Error(message string) {
-	fmt.Print(ON_RED + " " + RESET + " ERR: ", message, "\n")
+	fmt.Print(ON_RED + " " + RESET + " ", message, "\n")
 }
 
 func Fatal(message string) {
-	fmt.Print(ON_RED + " " + RESET + " ERR: ", message, "\n")
+	fmt.Print(ON_RED + " " + RESET + " ", message, "\n")
 	Raw("")
 	os.Exit(0)
 }
