@@ -5,8 +5,8 @@ Asynchronous and recursive data URL generator/embedder for single files or web p
 Make sure that your **go environment** is configured correctly and that `$GOPATH/bin` is added to `$PATH`.
 
 ```
-go get github.com/yungtravla/epoxy
-cd $GOPATH/src/github.com/yungtravla/epoxy
+go get github.com/buffermet/epoxy
+cd $GOPATH/src/github.com/buffermet/epoxy
 go install
 ```
 
