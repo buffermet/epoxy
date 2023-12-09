@@ -22,6 +22,36 @@ import(
 	"github.com/buffermet/epoxy/session"
 )
 
+const (
+  selectorContentTypeCssHtmlSvg              = regexp.MustCompile(`(?:text/(?:css|html)|image/svg\+xml)`)
+  selectorHtmlContentAttribute               = regexp.MustCompile(`(?i)content=["']([^"']*)["']`)
+  selectorHtmlContentAttributeStrictValue    = regexp.MustCompile(`(?i)content=["'][^"']+["']`)
+  selectorHtmlContentAttributeStrictValueMem = regexp.MustCompile(`(?i)content=["']([^"']+)["']`)
+  selectorHtmlHrefAttribute                  = regexp.MustCompile(`(?i)href=["']([^"']*)["']`)
+  selectorHtmlHrefAttributeStrictValue       = regexp.MustCompile(`(?i)href=["'][^"']+["']?`)
+  selectorHtmlHrefAttributeStrictValueMem    = regexp.MustCompile(`(?i)href=["']([^"']+)["']?`)
+  selectorHtmlSourceAttribute                = regexp.MustCompile(`(?i)src=["']([^"']*)["']`)
+  selectorHtmlSourceAttributeStrictValue     = regexp.MustCompile(`(?i)src=["'][^"']+["']`)
+  selectorHtmlSourceAttributeStrictValueMem  = regexp.MustCompile(`(?i)src=["']([^"']+)["']`)
+  selectorHtmlUrlAttribute                   = regexp.MustCompile(`(?i)url[(]["']?([^"']*)["']?[)]`)
+  selectorHtmlUrlAttributeStrictValue        = regexp.MustCompile(`(?i)url[(]["']?[^"')]+["']?[)]`)
+  selectorHtmlUrlAttributeStrictValueMem     = regexp.MustCompile(`(?i)url[(]["']?([^"')]+)["']?[)]`)
+  selectorSemiColonAndRest                   = regexp.MustCompile(`;.*`)
+  selectorUriFileExtension                   = regexp.MustCompile(`\.([a-zA-Z0-9)]+)$`)
+  selectorUriNotSlash                        = regexp.MustCompile(`[^/]+/`)
+  selectorUriNotSlashAtLeastOne              = regexp.MustCompile(`[^/]+/$`)
+  selectorUriPathAnyLeadingDotDotSlash       = regexp.MustCompile(`^(?:[.][.]/)*`)
+  selectorUriPathDotDotSlash                 = regexp.MustCompile(`[.][.]/`)
+  selectorUriPathStartingWithDot             = regexp.MustCompile(`^[.]`)
+  selectorUriScheme                          = regexp.MustCompile(`(?i)^[a-z]+:`)
+	selectorUriSchemeAndHost                   = regexp.MustCompile(`(?i)^http[s]?://[^/]+`)
+  selectorUriSchemeCurrent                   = regexp.MustCompile(`^//`)
+  selectorUriSchemeDataOrJavaScript          = regexp.MustCompile(`(?i)^(?:data:|javascript:|#)`)
+  selectorUriStartOfPath                     = regexp.MustCompile(`^/`)
+  selectorUriLeadingUpToPath                 = regexp.MustCompile(`[^/]*$`)
+  selectorUriSearchOrHash                    = regexp.MustCompile(`(?:\?|#).*$`)
+)
+
 func containsString(slice *[]string, str string) bool {
 	for i := 0; i < len(*slice); i++ {
 		if strings.EqualFold((*slice)[i], str) {
@@ -32,33 +62,32 @@ func containsString(slice *[]string, str string) bool {
 }
 
 func pathToURL(path, origin string) string {
-	r := regexp.MustCompile(`(?i)^http[s]?://[^/]+`)
-	origin_host := r.FindString(origin)
-	origin_path := r.ReplaceAllString(origin, "")
-	origin_path = regexp.MustCompile(`[^/]*$`).ReplaceAllString(origin_path, "")
-	origin_scheme := regexp.MustCompile(`(?i)^[a-z]+:`).FindString(origin)
+	origin_host := selectorUriSchemeAndHost.FindString(origin)
+	origin_path := selectorUriSchemeAndHost.ReplaceAllString(origin, "")
+	origin_path = selectorUriLeadingUpToPath.ReplaceAllString(origin_path, "")
+	origin_scheme := selectorUriScheme.FindString(origin)
 
 	url := ""
 
-	if regexp.MustCompile(`^//`).FindString(path) == "" {
-		if regexp.MustCompile(`^/`).FindString(path) == "" {
-			if regexp.MustCompile(`(?i)^http[s]?://[^/]+`).FindString(path) == "" {
-				if regexp.MustCompile(`^[.]`).FindString(path) == "" {
+	if selectorUriSchemeCurrent.FindString(path) == "" {
+		if selectorUriStartOfPath.FindString(path) == "" {
+			if selectorUriSchemeAndHost.FindString(path) == "" {
+				if selectorUriPathStartingWithDot.FindString(path) == "" {
 					url = origin_host + origin_path + path
 				} else {
-					count := len(regexp.MustCompile(`[.][.]/`).FindAllString(path, -1))
+					count := len(selectorUriPathDotDotSlash.FindAllString(path, -1))
 
 					if count == 0 {
 						log.Error("invalid path detected: " + path)
-					} else if len(regexp.MustCompile(`[^/]+/`).FindAllString(origin_path, -1)) < count {
+					} else if len(selectorUriNotSlash.FindAllString(origin_path, -1)) < count {
 						log.Error("unable to move out of directory: " + path + " (origin path is not long enough)")
 					} else {
 						stripped_path := origin_path
 						for i := 0; i < count; i++ {
-							stripped_path = regexp.MustCompile(`[^/]+/$`).ReplaceAllString(stripped_path, "")
+							stripped_path = selectorUriNotSlashAtLeastOne.ReplaceAllString(stripped_path, "")
 						}
 
-						url = origin_host + stripped_path + regexp.MustCompile(`^(?:[.][.]/)*`).ReplaceAllString(path, "")
+						url = origin_host + stripped_path + selectorUriPathAnyLeadingDotDotSlash.ReplaceAllString(path, "")
 					}
 				}
 			} else {
@@ -77,37 +106,37 @@ func pathToURL(path, origin string) string {
 func findResources(s *session.SessionConfig) []string {
 	var resources []string
 
-	matches_src := regexp.MustCompile(`(?i)src=["'](.*?)["']`).FindAllString(string(s.Body), -1)
+	matches_src := selectorHtmlSourceAttribute.FindAllString(string(s.Body), -1)
 
 	for i := 0; i < len(matches_src); i++ {
-		matches_src[i] = regexp.MustCompile(`(?i)src=["'](.*?)["']`).ReplaceAllString(matches_src[i], "${1}")
+		matches_src[i] = selectorHtmlSourceAttribute.ReplaceAllString(matches_src[i], "${1}")
 		if !strings.HasPrefix(matches_src[i], "data:") {
 			resources = append(resources, matches_src[i])
 		}
 	}
 
-	matches_content := regexp.MustCompile(`(?i)content=["'](.*?)["']`).FindAllString(string(s.Body), -1)
+	matches_content := selectorHtmlContentAttribute.FindAllString(string(s.Body), -1)
 
 	for i := 0; i < len(matches_content); i++ {
-		matches_content[i] = regexp.MustCompile(`(?i)content=["'](.*?)["']`).ReplaceAllString(matches_content[i], "${1}")
+		matches_content[i] = selectorHtmlContentAttribute.ReplaceAllString(matches_content[i], "${1}")
 		if !strings.HasPrefix(matches_content[i], "data:") {
 			resources = append(resources, matches_content[i])
 		}
 	}
 
-	matches_href := regexp.MustCompile(`(?i)href=["'](.*?)["']`).FindAllString(string(s.Body), -1)
+	matches_href := selectorHtmlHrefAttribute.FindAllString(string(s.Body), -1)
 
 	for i := 0; i < len(matches_href); i++ {
-		matches_href[i] = regexp.MustCompile(`(?i)href=["'](.*?)["']`).ReplaceAllString(matches_href[i], "${1}")
+		matches_href[i] = selectorHtmlHrefAttribute.ReplaceAllString(matches_href[i], "${1}")
 		if !strings.HasPrefix(matches_href[i], "data:") {
 			resources = append(resources, matches_href[i])
 		}
 	}
 
-	matches_url := regexp.MustCompile(`(?i)url[(]["']?(.*?)["']?[)]`).FindAllString(string(s.Body), -1)
+	matches_url := selectorHtmlUrlAttribute.FindAllString(string(s.Body), -1)
 
 	for i := 0; i < len(matches_url); i++ {
-		matches_url[i] = regexp.MustCompile(`(?i)url[(]["']?(.*?)["']?[)]`).ReplaceAllString(matches_url[i], "${1}")
+		matches_url[i] = selectorHtmlUrlAttribute.ReplaceAllString(matches_url[i], "${1}")
 		if !strings.HasPrefix(matches_url[i], "data:") {
 			resources = append(resources, matches_url[i])
 		}
@@ -142,12 +171,12 @@ func createDataURL(mimetype string, payload *[]byte) []byte {
 }
 
 func embedResources(s *session.SessionConfig) session.SessionConfig {
-	matches_src := regexp.MustCompile(`(?i)src=["'][^"']+["']`).FindAllString(string(s.Body), -1)
+	matches_src := selectorHtmlSourceAttributeStrictValue.FindAllString(string(s.Body), -1)
 
 	for i := 0; i < len(matches_src); i++ {
-		path := regexp.MustCompile(`(?i)src=["']([^"']+)["']`).ReplaceAllString(string(matches_src[i]), "${1}")
+		path := selectorHtmlSourceAttributeStrictValueMem.ReplaceAllString(string(matches_src[i]), "${1}")
 
-		if regexp.MustCompile(`(?i)^(?:data:|javascript:|#)`).FindString(path) == "" {
+		if selectorUriSchemeDataOrJavaScript.FindString(path) == "" {
 			address := pathToURL(path, s.Origin)
 
 			var body []byte
@@ -170,12 +199,12 @@ func embedResources(s *session.SessionConfig) session.SessionConfig {
 		}
 	}
 
-	matches_content := regexp.MustCompile(`(?i)content=["'][^"']+["']`).FindAllString(string(s.Body), -1)
+	matches_content := selectorHtmlContentAttributeStrictValue.FindAllString(string(s.Body), -1)
 
 	for i := 0; i < len(matches_content); i++ {
-		path := regexp.MustCompile(`(?i)content=["']([^"']+)["']`).ReplaceAllString(string(matches_content[i]), "${1}")
+		path := selectorHtmlContentAttributeStrictValueMem.ReplaceAllString(string(matches_content[i]), "${1}")
 
-		if regexp.MustCompile(`(?i)^(?:data:|javascript:|#)`).FindString(path) == "" {
+		if selectorUriSchemeDataOrJavaScript.FindString(path) == "" {
 			address := pathToURL(path, s.Origin)
 
 			var body []byte
@@ -198,12 +227,12 @@ func embedResources(s *session.SessionConfig) session.SessionConfig {
 		}
 	}
 
-	matches_href := regexp.MustCompile(`(?i)href=["'][^"']+["']?`).FindAllString(string(s.Body), -1)
+	matches_href := selectorHtmlHrefAttributeStrictValue.FindAllString(string(s.Body), -1)
 
 	for i := 0; i < len(matches_href); i++ {
-		path := regexp.MustCompile(`(?i)href=["']([^"']+)["']?`).ReplaceAllString(string(matches_href[i]), "$1")
+		path := selectorHtmlHrefAttributeStrictValueMem.ReplaceAllString(string(matches_href[i]), "$1")
 
-		if regexp.MustCompile(`(?i)^(?:data:|javascript:|#)`).FindString(path) == "" {
+		if selectorUriSchemeDataOrJavaScript.FindString(path) == "" {
 			address := pathToURL(path, s.Origin)
 
 			var body []byte
@@ -226,12 +255,12 @@ func embedResources(s *session.SessionConfig) session.SessionConfig {
 		}
 	}
 
-	matches_url := regexp.MustCompile(`(?i)url[(]["']?[^"')]+["']?[)]`).FindAllString(string(s.Body), -1)
+	matches_url := selectorHtmlUrlAttributeStrictValue.FindAllString(string(s.Body), -1)
 
 	for i := 0; i < len(matches_url); i++ {
-		path := regexp.MustCompile(`(?i)url[(]["']?([^"')]+)["']?[)]`).ReplaceAllString(matches_url[i], "$1")
+		path := selectorHtmlUrlAttributeStrictValueMem.ReplaceAllString(matches_url[i], "$1")
 
-		if regexp.MustCompile(`(?i)^(?:data:|javascript:|#)`).FindString(path) == "" {
+		if selectorUriSchemeDataOrJavaScript.FindString(path) == "" {
 			address := pathToURL(path, s.Origin)
 
 			var body []byte
@@ -258,12 +287,12 @@ func embedResources(s *session.SessionConfig) session.SessionConfig {
 }
 
 func Parse(s *session.SessionConfig) session.SessionConfig {
-	origin_path := regexp.MustCompile(`(?i)http[s]?://[^/]+`).ReplaceAllString(s.Origin, "")
+	origin_path := selectorUriSchemeAndHost.ReplaceAllString(s.Origin, "")
 
 	if origin_path == "" {
 		origin_path = "/"
 	} else if !strings.HasSuffix(origin_path, "/") {
-		origin_path = regexp.MustCompile(`[^/]*$`).ReplaceAllString(origin_path, "")
+		origin_path = selectorUriLeadingUpToPath.ReplaceAllString(origin_path, "")
 	}
 
 	if s.Recurse != 0 {
@@ -279,7 +308,7 @@ func Parse(s *session.SessionConfig) session.SessionConfig {
 
 		if session.Depth != 1 || answer != "n" && answer != "N" {
 			for i := 0; i < len(resources); i++ {
-				if resources[i] != "" && regexp.MustCompile(`(?i)^(?:data:|javascript:|#)`).FindString(resources[i]) == "" {
+				if resources[i] != "" && selectorUriSchemeDataOrJavaScript.FindString(resources[i]) == "" {
 					var resource session.Resource
 
 					address := pathToURL(resources[i], s.Origin)
@@ -290,9 +319,9 @@ func Parse(s *session.SessionConfig) session.SessionConfig {
 
 						///// ASYNC /////
 						go func(path string) {
-							stripped_address := regexp.MustCompile(`(?:\?|#).*$`).ReplaceAllString(address, "")
+							stripped_address := selectorUriSearchOrHash.ReplaceAllString(address, "")
 
-							extension := regexp.MustCompile(`\.([a-zA-Z0-9)]+)$`).FindString(stripped_address)
+							extension := selectorUriFileExtension.FindString(stripped_address)
 
 							extension_mimetype := strings.Replace(mime.TypeByExtension(extension) , " ", "", -1)
 							if extension_mimetype == "" { extension_mimetype = "unknown" }
@@ -311,15 +340,15 @@ func Parse(s *session.SessionConfig) session.SessionConfig {
 									content_type = parsed_mimetype.MIME.Value
 								}
 
-								content_type = regexp.MustCompile(`;.*`).ReplaceAllString(content_type, "")
+								content_type = selectorSemiColonAndRest.ReplaceAllString(content_type, "")
 
 								resource.Type = content_type
 
 								if containsString(&s.Accept, content_type) {
 									log.Success(strconv.Itoa(len(body)) + " B " + log.BOLD + "[" + content_type + "]" + log.RESET + " " + address)
 
-									if regexp.MustCompile(`(?:text/(?:css|html)|image/svg\+xml)`).FindString(content_type) != "" {
-										_s := session.SessionConfig { 
+									if selectorContentTypeCssHtmlSvg.FindString(content_type) != "" {
+										_s := session.SessionConfig {
 											resource.Address,             // Source string
 											resource.Address,             // Origin string
 											body,                         // Body []byte
@@ -376,12 +405,12 @@ func Parse(s *session.SessionConfig) session.SessionConfig {
 
 		extension_mimetype := ""
 		if s.Origin != "" {
-			stripped_address := regexp.MustCompile(`(?:\?|#).*$`).ReplaceAllString(s.Origin, "")
+			stripped_address := selectorUriSearchOrHash.ReplaceAllString(s.Origin, "")
 
-			extension := regexp.MustCompile(`\.([a-zA-Z0-9)]+)$`).FindString(stripped_address)
+			extension := selectorUriFileExtension.FindString(stripped_address)
 			extension_mimetype = strings.Replace(mime.TypeByExtension(extension) , " ", "", -1)
 		} else {
-			extension := regexp.MustCompile(`\.([a-zA-Z0-9)]+)$`).FindString(s.Source)
+			extension := selectorUriFileExtension.FindString(s.Source)
 			extension_mimetype = strings.Replace(mime.TypeByExtension(extension) , " ", "", -1)
 		}
 
@@ -395,7 +424,7 @@ func Parse(s *session.SessionConfig) session.SessionConfig {
 			content_type = extension_mimetype
 		}
 
-		content_type = regexp.MustCompile(`;.*`).ReplaceAllString(content_type, "")
+		content_type = selectorSemiColonAndRest.ReplaceAllString(content_type, "")
 
 		if content_type != "" {
 			data_url := "data:" + content_type + ";base64,"
