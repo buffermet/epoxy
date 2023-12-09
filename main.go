@@ -16,7 +16,7 @@ import(
 )
 
 func initiatePrint(s *session.SessionConfig) {
-	log.Raw( string( parser.Parse(s).Body ) )
+	log.Raw(string(parser.Parse(s).Body))
 }
 
 func initiateWrite(s *session.SessionConfig) {

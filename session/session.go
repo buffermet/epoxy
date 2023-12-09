@@ -235,7 +235,7 @@ func NewSession() SessionConfig {
 		} else if args[i] == "--print" || args[i] == "-print" {
 			Print = true
 		} else if args[i] == "--source" || args[i] == "-source" {
-			if i < ( len(args) - 1 ) {
+			if i < (len(args) - 1) {
 				s.Source = args[i+1]
 				i++
 			} else {
@@ -243,7 +243,7 @@ func NewSession() SessionConfig {
 				showOptions()
 			}
 		} else if args[i] == "--origin" || args[i] == "-origin" {
-			if i < ( len(args) - 1 ) {
+			if i < (len(args) - 1) {
 				s.Origin = args[i+1]
 				i++
 			} else {
@@ -251,7 +251,7 @@ func NewSession() SessionConfig {
 				showOptions()
 			}
 		} else if args[i] == "--recurse" || args[i] == "-recurse" {
-			if i < ( len(args) - 1 ) {
+			if i < (len(args) - 1) {
 				recurse_arg = args[i+1]
 				i++
 			} else {
@@ -259,7 +259,7 @@ func NewSession() SessionConfig {
 				showOptions()
 			}
 		} else if args[i] == "--cores" || args[i] == "-cores" {
-			if i < ( len(args) - 1 ) {
+			if i < (len(args) - 1) {
 				cores_arg = args[i+1]
 				i++
 			} else {
@@ -446,7 +446,7 @@ func NewSession() SessionConfig {
 	} else {
 		source, err := ioutil.ReadFile(s.Source)
 		if err != nil {
-			log.Error( "invalid source file: " + s.Source + " (" + err.Error() + ")\n" )
+			log.Error("invalid source file: " + s.Source + " (" + err.Error() + ")\n")
 			showOptions()
 		}
 
@@ -456,7 +456,7 @@ func NewSession() SessionConfig {
 	if recurse_arg != "" {
 		i, err := strconv.Atoi(recurse_arg)
 		if err != nil {
-			log.Error( "invalid number of recursions: " + recurse_arg + " (" + err.Error() + ")\n" )
+			log.Error("invalid number of recursions: " + recurse_arg + " (" + err.Error() + ")\n")
 		}
 
 		s.Recurse = i
@@ -465,7 +465,7 @@ func NewSession() SessionConfig {
 	if cores_arg != "" {
 		i, err := strconv.Atoi(cores_arg)
 		if err != nil {
-			log.Error( "invalid number of processes: " + cores_arg + " (" + err.Error() + ")\n" )
+			log.Error("invalid number of processes: " + cores_arg + " (" + err.Error() + ")\n")
 		}
 
 		Cores = i
