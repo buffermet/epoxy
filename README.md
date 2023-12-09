@@ -1,13 +1,9 @@
 Asynchronous and recursive data URL generator/embedder for single files or web pages.
 
-# Install
-
-Make sure that your **go environment** is configured correctly and that `$GOPATH/bin` is added to `$PATH`.
+# Installation
 
 ```
-go get github.com/buffermet/epoxy
-cd $GOPATH/src/github.com/buffermet/epoxy
-go install
+go install github.com/buffermet/epoxy
 ```
 
 # Usage
