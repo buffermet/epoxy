@@ -274,7 +274,7 @@ func Parse(s *session.SessionConfig) session.SessionConfig {
 		answer := ""
 
 		if session.Depth == 1 {
-			answer = log.Prompt( "fetch up to " + strconv.Itoa( len(resources) ) + " resource(s)? Y/n" )
+			answer = log.Prompt( "fetch at least " + strconv.Itoa( len(resources) ) + " resource(s)? Y/n" )
 		}
 
 		if session.Depth != 1 || answer != "n" && answer != "N" {
