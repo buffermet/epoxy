@@ -11,8 +11,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/yungtravla/epoxy/log"
-	"github.com/yungtravla/epoxy/session"
+	"github.com/buffermet/epoxy/log"
+	"github.com/buffermet/epoxy/session"
 )
 
 var (

@@ -17,9 +17,9 @@ import(
 	"encoding/base64"
 
 	"github.com/h2non/filetype"
-	"github.com/yungtravla/epoxy/log"
-	"github.com/yungtravla/epoxy/net"
-	"github.com/yungtravla/epoxy/session"
+	"github.com/buffermet/epoxy/log"
+	"github.com/buffermet/epoxy/net"
+	"github.com/buffermet/epoxy/session"
 )
 
 func containsString(slice *[]string, str string) bool {

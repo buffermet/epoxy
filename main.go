@@ -10,9 +10,9 @@ import(
 	"runtime"
 	"io/ioutil"
 
-	"github.com/yungtravla/epoxy/log"
-	"github.com/yungtravla/epoxy/parser"
-	"github.com/yungtravla/epoxy/session"
+	"github.com/buffermet/epoxy/log"
+	"github.com/buffermet/epoxy/parser"
+	"github.com/buffermet/epoxy/session"
 )
 
 func initiatePrint(s *session.SessionConfig) {

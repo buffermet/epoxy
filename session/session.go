@@ -13,7 +13,7 @@ import(
 	"strconv"
 	"io/ioutil"
 
-	"github.com/yungtravla/epoxy/log"
+	"github.com/buffermet/epoxy/log"
 )
 
 type Resource struct {
