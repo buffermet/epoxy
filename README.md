@@ -24,7 +24,7 @@ You can set the recursion limit with `-recurse` to choose how many nested resour
 
 ![screenshot from 2018-12-23 18-58-11](https://user-images.githubusercontent.com/29265684/50382162-ed984400-06e4-11e9-813d-b0a4c8b64a16.png)
 
-If you want to turn a single file into a data URL, set the recursion to 0 and epoxy will generate a data URL for the specified file.
+If you want to turn a single file into a data URL, set the recursion to 0 and epoxy will generate a data URL for the `-source` file contents.
 
 ```
 $ epoxy -source twitter-index.html -recurse 0
