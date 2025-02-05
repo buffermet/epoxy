@@ -22,7 +22,7 @@ import(
 	"github.com/buffermet/epoxy/session"
 )
 
-const (
+var (
 	selectorContentTypeCssHtmlSvg              = regexp.MustCompile(`(?:text/(?:css|html)|image/svg\+xml)`)
 	selectorHtmlContentAttribute               = regexp.MustCompile(`(?i)content=["']([^"']*)["']`)
 	selectorHtmlContentAttributeStrictValue    = regexp.MustCompile(`(?i)content=["'][^"']+["']`)
